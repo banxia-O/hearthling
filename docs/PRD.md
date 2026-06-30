@@ -515,6 +515,75 @@ cron 只负责唤醒。
 
 避免变成打扰型 bot。
 
+### 12.5 Agent Wallet / Agent Card
+
+Agent-native card 不应优先理解成“给 agent 一张真实信用卡”。
+
+在 Hearthling 里，它更像一个**生活预算层**：让 agent 有可见、可约束、可审计的零花钱和采购能力。
+
+它解决的问题不是支付本身，而是信任：
+
+```text
+agent 想买什么 → 为什么买 → 花多少钱 → 是否允许 → 交易如何记录 → 用户能否冻结
+```
+
+第一版只做模拟钱包和账本，不接真实支付。
+
+可支持的生活场景：
+
+- 买种子、鱼饵、厨房材料、家具、装饰。
+- 续订模型额度、API、云服务、工具订阅。
+- 为用户准备小礼物、素材、打印品或纪念物。
+- 记录 agent 为了完成任务消耗了多少资源。
+
+建议数据模型：
+
+```json
+{
+  "wallet": {
+    "mode": "simulated",
+    "currency": "CNY",
+    "monthly_budget": 100,
+    "remaining_budget": 78,
+    "approval_threshold": 20,
+    "hard_limit": 100,
+    "frozen": false
+  },
+  "transaction": {
+    "id": "txn_xxx",
+    "time": "2026-06-30T12:00:00+08:00",
+    "type": "simulated_purchase",
+    "item": "seed_pack",
+    "amount": 6,
+    "reason": "replant the garden after harvest",
+    "status": "approved",
+    "requires_user_approval": false
+  }
+}
+```
+
+审批策略：
+
+- 免费/模拟消费：可自动执行。
+- 低额白名单消费：可自动执行，但必须写入交易日志。
+- 中额消费：进入 pending，微信或面板提醒用户确认。
+- 高额消费、真实支付、订阅续费：必须用户显式确认。
+- 异常频率、异常商户、预算耗尽：自动冻结 wallet。
+
+安全边界：
+
+- 不保存银行卡号、CVV、支付密码或真实支付凭证。
+- 不把 API key、token、订单号、连接串写入仓库、日志或 PRD 示例。
+- 不允许 agent 拥有无上限消费权限。
+- 任何真实支付都必须通过 tokenized card、virtual card 或受信支付 provider。
+- 每一笔交易都必须有 reason、amount、status、approval record。
+
+如果未来接入真实支付，Hearthling 只保存 provider 返回的非敏感交易状态和审计元数据，不保存支付凭证本体。
+
+这部分可在面板右侧显示为：本月预算、今日花费、待审批、最近交易、冻结按钮、agent 的购买理由。
+
+一句话：Agent Card 不是金融炫技，而是 agent 自主生活的信任接口。
+
 ## 13. MVP 范围
 
 ### 13.1 MVP 必须有
@@ -536,6 +605,8 @@ cron 只负责唤醒。
 - 完整镇子。
 - 战斗。
 - 复杂经济。
+- 真实支付。
+- agent 自动开通真实订阅。
 - 真实天气 API。
 - 多 agent 联机。
 - 大量 LLM 生成地图。
@@ -669,6 +740,16 @@ cron 只负责唤醒。
 - 日记摘要输入。
 - 用户近期互动影响行动偏好。
 
+### Phase 6：Agent Wallet / Agent Card
+
+- 模拟钱包。
+- 交易账本。
+- 预算上限。
+- 白名单商户/用途分类。
+- 用户审批流。
+- 冻结按钮。
+- 未来再评估真实 virtual card / tokenized card 接入。
+
 ## 17. 开放问题
 
 1. agent 的像素形象要用 emoji、CSS 小人，还是小 PNG sprite？
@@ -678,6 +759,7 @@ cron 只负责唤醒。
 5. 日记是否每晚自动写，还是只有事件足够时写？
 6. 是否和 heartscale 共用数据库，还是保持独立再汇总？
 7. 仓库名暂定什么：`agent-yard`、`guilan-yard`、`agent-life-yard`、`yardling`？
+8. Agent Wallet 的默认月预算是多少？是否允许真实支付，还是长期保持模拟账本？
 
 ## 18. 开源参考与可借鉴点
 
